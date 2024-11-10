@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+
+  discovery-service:
+    image: eurekaserver:latest
+    build:
+      context: ./discovery-service
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+
+  forum-service:
+    image: forumPostgres:latest
+    build:
+      context: ./forum-service
+    container_name: forum-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://forum-db:5432/projetMicro
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=1738
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+    depends_on:
+      - discovery-service
+    ports:
+      - "1738:1738"
+
+  gateway-service:
+    image: gateway:latest
+    build:
+      context: ./gateway-service
+    container_name: gateway-service
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+    depends_on:
+      - discovery-service
+    ports:
+      - "9056:9056"
+
+  forum-db:
+    image: postgres:latest
+    container_name: forum-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1738
+      POSTGRES_DB: projetMicro
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_forum_data:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    container_name: keycloak
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "9090:8080"
+    command:
+      - start-dev
+      - --features=declarative-ui
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+volumes:
+  db_forum_data:
+  keycloak_data:
